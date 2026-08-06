@@ -1,13 +1,13 @@
 -- ============================================
--- PROJECT BACKPACK - ADAPTADOR COMPLETO
+-- PROJECT BACKPACK - ADAPTADOR COMPLETO (CLEAN)
 -- ============================================
 _G.ScriptAdapter = _G.ScriptAdapter or {}
 _G.ScriptAdapter.Queue = _G.ScriptAdapter.Queue or {}
 _G.ScriptAdapter.RegisteredTools = _G.ScriptAdapter.RegisteredTools or {}
 _G.ScriptAdapter.IsDragging = false
 
-local MAX_SLOTS = 1
-_G.ScriptAdapter.HotbarSlots = _G.ScriptAdapter.HotbarSlots or {nil}
+local MAX_SLOTS = 3
+_G.ScriptAdapter.HotbarSlots = _G.ScriptAdapter.HotbarSlots or {nil, nil, nil}
 
 local Adapter = _G.ScriptAdapter
 local Players = game:GetService("Players")
@@ -99,13 +99,14 @@ grid.VerticalAlignment = Enum.VerticalAlignment.Top
 grid.SortOrder = Enum.SortOrder.LayoutOrder
 grid.Parent = scrollFrame
 
--- CONTAINER DA HOTBAR
-local containerWidth = MAX_SLOTS * 65 + (MAX_SLOTS - 1) * 6
+-- CONTAINER DA HOTBAR (CENTRALIZAÇÃO E DIMENSIONAMENTO DINÂMICO)
 local hotbarContainer = Instance.new("Frame")
 hotbarContainer.Name = "HotbarContainer"
-hotbarContainer.Size = UDim2.new(0, containerWidth, 0, 68)
-hotbarContainer.Position = UDim2.new(0.5, -math.floor(containerWidth / 2), 0.78, 0)
+hotbarContainer.Size = UDim2.new(0, 0, 0, 68)
+hotbarContainer.Position = UDim2.new(0.5, 0, 0.78, 0)
+hotbarContainer.AnchorPoint = Vector2.new(0.5, 0)
 hotbarContainer.BackgroundTransparency = 1
+hotbarContainer.AutomaticSize = Enum.AutomaticSize.X
 hotbarContainer.Parent = screenGui
 
 local hotbarLayout = Instance.new("UIListLayout")
@@ -115,7 +116,7 @@ hotbarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 hotbarLayout.Padding = UDim.new(0, 6)
 hotbarLayout.Parent = hotbarContainer
 
--- SLOTS DE HOTBAR
+-- CRIANDO OS SLOTS DA HOTBAR (ATÉ MÁXIMO DE 3)
 local hotbarSlotFrames = {}
 for i = 1, MAX_SLOTS do
     local slotFrame = Instance.new("Frame")
@@ -123,7 +124,7 @@ for i = 1, MAX_SLOTS do
     slotFrame.Size = UDim2.new(0, 65, 0, 65)
     slotFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     slotFrame.BackgroundTransparency = 0.5
-    slotFrame.Visible = false -- Oculto por padrão
+    slotFrame.Visible = false
     slotFrame.Parent = hotbarContainer
 
     local sStroke = Instance.new("UIStroke")
@@ -138,10 +139,26 @@ for i = 1, MAX_SLOTS do
     hotbarSlotFrames[i] = slotFrame
 end
 
--- ATUALIZADOR DE RE-RENDERIZAÇÃO DA UI
+-- ATUALIZADOR E RE-RENDERIZADOR DA UI
 function Adapter:RefreshUI()
+    -- Calcula quantos slots estão atualmente ocupados
+    local lastOccupied = 0
+    for i = 1, MAX_SLOTS do
+        if Adapter.HotbarSlots[i] ~= nil then
+            lastOccupied = i
+        end
+    end
+
+    -- Se estiver arrastando, libera visualmente o próximo slot vazio (máximo 3)
+    local visibleLimit = lastOccupied
+    if Adapter.IsDragging then
+        visibleLimit = math.min(MAX_SLOTS, math.max(1, lastOccupied + 1))
+    end
+
     for i = 1, MAX_SLOTS do
         local slotContainer = hotbarSlotFrames[i]
+        
+        -- Limpa elementos que não pertencem ao layout
         for _, child in pairs(slotContainer:GetChildren()) do
             if child:IsA("GuiObject") and not child:IsA("UIStroke") and not child:IsA("UICorner") then
                 child.Parent = nil
@@ -155,11 +172,12 @@ function Adapter:RefreshUI()
             toolData.ButtonUI.Parent = slotContainer
             slotContainer.Visible = true
         else
-            -- Exibe o slot vazio APENAS se estiver arrastando algum item
-            slotContainer.Visible = Adapter.IsDragging
+            -- Mantém o slot visível apenas se estiver dentro do limite calculado
+            slotContainer.Visible = (i <= visibleLimit)
         end
     end
 
+    -- Atualiza o inventário da mochila
     for _, child in pairs(scrollFrame:GetChildren()) do
         if child:IsA("GuiObject") and not child:IsA("UIGridLayout") then
             child.Parent = nil
@@ -183,7 +201,7 @@ function Adapter:RefreshUI()
     end
 end
 
--- SISTEMA DE DRAG & DROP COM EXIBIÇÃO DINÂMICA
+-- LÓGICA DE ARRASTO (DRAG & DROP)
 local function SetupDragAndDrop(toolData)
     local btn = toolData.ButtonUI
     if not btn then return end
@@ -200,11 +218,11 @@ local function SetupDragAndDrop(toolData)
 
             dragConn = RunService.RenderStepped:Connect(function()
                 local mPos = UserInputService:GetMouseLocation()
-                
+
                 if not isDragging and startPos and (mPos - startPos).Magnitude > dragThreshold then
                     isDragging = true
                     Adapter.IsDragging = true
-                    Adapter:RefreshUI() -- Faz o slot vazio surgir no momento que inicia o arrasto
+                    Adapter:RefreshUI()
 
                     dragProxy = btn:Clone()
                     dragProxy.Size = UDim2.new(0, 65, 0, 65)
@@ -241,13 +259,15 @@ local function SetupDragAndDrop(toolData)
             local targetSlotIndex = nil
             for i = 1, MAX_SLOTS do
                 local slotFrame = hotbarSlotFrames[i]
-                local pos = slotFrame.AbsolutePosition
-                local size = slotFrame.AbsoluteSize
+                if slotFrame.Visible then
+                    local pos = slotFrame.AbsolutePosition
+                    local size = slotFrame.AbsoluteSize
 
-                if mousePos.X >= pos.X and mousePos.X <= pos.X + size.X and
-                   mousePos.Y >= pos.Y and mousePos.Y <= pos.Y + size.Y then
-                    targetSlotIndex = i
-                    break
+                    if mousePos.X >= pos.X and mousePos.X <= pos.X + size.X and
+                       mousePos.Y >= pos.Y and mousePos.Y <= pos.Y + size.Y then
+                        targetSlotIndex = i
+                        break
+                    end
                 end
             end
 
@@ -280,7 +300,7 @@ local function SetupDragAndDrop(toolData)
                 end
             end
 
-            Adapter:RefreshUI() -- Se soltou fora, o slot vazio volta a esconder
+            Adapter:RefreshUI()
         end
 
         startPos = nil
@@ -303,256 +323,10 @@ toggleBtn.MouseButton1Click:Connect(function()
     mainPanel.Visible = not mainPanel.Visible
 end)
 
+-- Processa ferramentas que foram enviadas para a fila antes do adaptador iniciar
 for _, pendingTool in ipairs(Adapter.Queue) do
     Adapter:RegisterTool(pendingTool)
 end
 Adapter.Queue = {}
 
 Adapter:RefreshUI()
-
-
--- ============================================
--- FLING BALL TOOL (COMPATÍVEL COM PROJECT BACKPACK)
--- ============================================
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-
-local lp = Players.LocalPlayer
-local character = lp.Character or lp.CharacterAdded:Wait()
-
-lp.CharacterAdded:Connect(function(newChar)
-    character = newChar
-end)
-
-local sethp = sethiddenproperty or set_hidden_property
-if sethp then
-    task.spawn(function()
-        RunService.RenderStepped:Connect(function()
-            pcall(function()
-                sethp(lp, "SimulationRadius", 1e30)
-                sethp(lp, "MaxSimulationRadius", 1e30)
-            end)
-        end)
-    end)
-end
-
-local camera = Workspace.CurrentCamera
-
-local function executarAtaqueLimitado(alvoPlayer)
-    local alvoChar = alvoPlayer.Character
-    if not alvoChar or not alvoChar:FindFirstChild("HumanoidRootPart") then return end
-
-    local alvoHum = alvoChar.Humanoid
-    local vCharacter = lp.Character
-    local meuHRP = vCharacter and vCharacter:FindFirstChild("HumanoidRootPart")
-
-    local remote = ReplicatedStorage:WaitForChild("RE"):WaitForChild("1Too1l")  
-
-    if not lp.Backpack:FindFirstChild("SoccerBall") and not character:FindFirstChild("SoccerBall") then
-        remote:InvokeServer("PickingTools", "SoccerBall")
-    end  
-
-    repeat task.wait() until lp.Backpack:FindFirstChild("SoccerBall") or character:FindFirstChild("SoccerBall")  
-
-    local sTool = lp.Backpack:FindFirstChild("SoccerBall") or character:FindFirstChild("SoccerBall")
-    sTool.Parent = character  
-
-    local ballName = "Soccer" .. lp.Name
-    local ballFolder = Workspace:WaitForChild("WorkspaceCom"):WaitForChild("001_SoccerBalls")
-
-    local bolaFisica = nil
-    repeat task.wait() until ballFolder:FindFirstChild(ballName)
-    bolaFisica = ballFolder:FindFirstChild(ballName)  
-
-    sTool.Parent = lp.Backpack  
-
-    if bolaFisica and meuHRP then
-        if sethp then
-            pcall(function() sethp(bolaFisica, "NetworkOwner", lp) end)
-        elseif bolaFisica.SetNetworkOwner then
-            pcall(function() bolaFisica:SetNetworkOwner(lp) end)
-        end
-
-        local nc = Instance.new("NoCollisionConstraint", bolaFisica)
-        nc.Part0 = bolaFisica
-        nc.Part1 = meuHRP
-
-        bolaFisica.CanCollide = true
-        bolaFisica.Massless = false
-        bolaFisica.CustomPhysicalProperties = PhysicalProperties.new(100, 100, 10, 100, 100)
-
-        bolaFisica.Velocity = Vector3.new(0,0,0)
-        bolaFisica.RotVelocity = Vector3.new(0,0,0)
-
-        local forcaMassiva = Vector3.new(math.huge, math.huge, math.huge)
-
-        local velocity = Instance.new("BodyVelocity")
-        velocity.Name = "FlingPowerLinear"
-        velocity.Velocity = Vector3.new(999999, 999999, 999999)
-        velocity.MaxForce = forcaMassiva
-        velocity.P = math.huge
-        velocity.Parent = bolaFisica  
-
-        local angularVelocity = Instance.new("BodyAngularVelocity")
-        angularVelocity.Name = "FlingPowerAngular"
-        angularVelocity.AngularVelocity = Vector3.new(999999, 999999, 999999)
-        angularVelocity.MaxTorque = forcaMassiva
-        angularVelocity.P = math.huge
-        angularVelocity.Parent = bolaFisica
-
-        local partesAlvo = {"HumanoidRootPart", "Head", "LowerTorso"}
-
-        task.spawn(function()
-            local index = 1
-            local conexaoFisica
-
-            conexaoFisica = RunService.Heartbeat:Connect(function()
-                if not bolaFisica or not bolaFisica.Parent or alvoHum.Health <= 0 or not alvoChar.Parent then
-                    if conexaoFisica then conexaoFisica:Disconnect() end
-                    if bolaFisica then bolaFisica:Destroy() end
-                    return
-                end
-
-                bolaFisica.CanCollide = true
-
-                local nomeParte = partesAlvo[index]
-                local p = alvoChar:FindFirstChild(nomeParte)
-
-                if p then
-                    local vReal = p.AssemblyLinearVelocity
-                    local velocidadePlana = Vector3.new(vReal.X, 0, vReal.Z)
-                    local posicaoFinal = p.Position
-
-                    if velocidadePlana.Magnitude > 1 then
-                        local direcaoMovimento = velocidadePlana.Unit
-                        local studsDeCompensacao = (velocidadePlana.Magnitude <= 18) and 14.2 or 20.2
-                        posicaoFinal = p.Position + (direcaoMovimento * studsDeCompensacao)
-                    end
-
-                    bolaFisica.CFrame = CFrame.new(posicaoFinal)
-                    bolaFisica.Velocity = Vector3.new(999999, 999999, 999999)
-                    bolaFisica.RotVelocity = Vector3.new(999999, 999999, 999999)
-
-                    firetouchinterest(bolaFisica, p, 0)
-                    firetouchinterest(bolaFisica, p, 1)
-                end
-
-                index = index + 1
-                if index > #partesAlvo then index = 1 end
-            end)
-        end)
-    end
-end
-
--- CRIAÇÃO DO BOTÃO VISUAL DA TOOL
-local actionButton = Instance.new("TextButton")
-actionButton.Name = "FlingBallButton"
-actionButton.Size = UDim2.new(0, 65, 0, 65)
-actionButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-actionButton.BackgroundTransparency = 0
-actionButton.BorderSizePixel = 0
-actionButton.Text = "FLING\nBALL"
-actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-actionButton.TextTransparency = 0
-actionButton.Font = Enum.Font.Arcade
-actionButton.TextScaled = true
-actionButton.TextWrapped = true
-
-local uiPadding = Instance.new("UIPadding")
-uiPadding.PaddingTop = UDim.new(0.08, 0)
-uiPadding.PaddingBottom = UDim.new(0.08, 0)
-uiPadding.PaddingLeft = UDim.new(0.08, 0)
-uiPadding.PaddingRight = UDim.new(0.08, 0)
-uiPadding.Parent = actionButton
-
-local uiStroke = Instance.new("UIStroke")
-uiStroke.Color = Color3.fromRGB(255, 255, 255)
-uiStroke.Thickness = 3
-uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-uiStroke.LineJoinMode = Enum.LineJoinMode.Miter
-uiStroke.Parent = actionButton
-
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 2)
-uiCorner.Parent = actionButton
-
-local modoAtaqueAtivo = false
-
-local function desativarModoAtaque()
-    modoAtaqueAtivo = false
-    actionButton.Text = "FLING\nBALL"
-    actionButton.BackgroundTransparency = 0
-    actionButton.TextTransparency = 0
-end
-
-actionButton.MouseButton1Click:Connect(function()
-    if _G.ScriptAdapter and _G.ScriptAdapter.MainPanel and _G.ScriptAdapter.MainPanel.Visible then
-        return
-    end
-
-    modoAtaqueAtivo = not modoAtaqueAtivo
-    
-    if modoAtaqueAtivo then
-        actionButton.BackgroundTransparency = 0.45
-        actionButton.TextTransparency = 0.2
-    else
-        desativarModoAtaque()
-    end
-end)
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed or not modoAtaqueAtivo then return end
-
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local pos = input.Position
-        local unitRay = camera:ScreenPointToRay(pos.X, pos.Y)
-        
-        local raycastParams = RaycastParams.new()
-        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-        raycastParams.FilterDescendantsInstances = {character}
-
-        local raycastResult = Workspace:Raycast(unitRay.Origin, unitRay.Direction * 50000, raycastParams)
-
-        if raycastResult and raycastResult.Instance then
-            local hitPart = raycastResult.Instance
-            local model = hitPart:FindFirstAncestorOfClass("Model")
-
-            if model and model:FindFirstChild("Humanoid") then
-                local tPlayer = Players:GetPlayerFromCharacter(model)
-
-                if tPlayer and tPlayer ~= lp then
-                    actionButton.Text = "LANÇAR\nBALL"
-                    executarAtaqueLimitado(tPlayer)
-                    
-                    task.delay(0.5, function()
-                        desativarModoAtaque()
-                    end)
-                end
-            end
-        end
-    end
-end)
-
--- REGISTRO DA TOOL NO ADAPTADOR
-_G.ScriptAdapter = _G.ScriptAdapter or {}
-_G.ScriptAdapter.Queue = _G.ScriptAdapter.Queue or {}
-
-local toolData = {
-    Id = "FlingBall_Tool",
-    ButtonUI = actionButton,
-    OnEquip = function()
-        modoAtaqueAtivo = true
-    end,
-    OnUnequip = function()
-        desativarModoAtaque()
-    end
-}
-
-if _G.ScriptAdapter and _G.ScriptAdapter.RegisterTool then
-    _G.ScriptAdapter:RegisterTool(toolData)
-else
-    table.insert(_G.ScriptAdapter.Queue, toolData)
-end
