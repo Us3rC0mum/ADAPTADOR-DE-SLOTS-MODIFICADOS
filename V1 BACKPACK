@@ -1,15 +1,17 @@
 -- ============================================
--- PROJECT BACKPACK - ADAPTADOR (DRAG & DROP + ALINHAMENTO)
+-- PROJECT BACKPACK - ADAPTADOR COMPLETO
 -- ============================================
 _G.ScriptAdapter = _G.ScriptAdapter or {}
 _G.ScriptAdapter.Queue = _G.ScriptAdapter.Queue or {}
 _G.ScriptAdapter.RegisteredTools = _G.ScriptAdapter.RegisteredTools or {}
-_G.ScriptAdapter.HotbarSlots = {nil, nil, nil} -- 3 slots fixos para troca de posição
+_G.ScriptAdapter.HotbarSlots = {nil, nil, nil}
 
 local Adapter = _G.ScriptAdapter
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
 local lp = Players.LocalPlayer
 local playerGui = lp:WaitForChild("PlayerGui")
 
@@ -24,28 +26,28 @@ screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then screenGui.Parent = playerGui end
 
--- 1. BOTÃO DE ABRIR/FECHAR MOCHILA
-local toggleBackpackBtn = Instance.new("ImageButton")
-toggleBackpackBtn.Name = "ToggleBackpackBtn"
-toggleBackpackBtn.Size = UDim2.new(0, 40, 0, 40)
-toggleBackpackBtn.Position = UDim2.new(0.5, -20, 0.02, 0)
-toggleBackpackBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-toggleBackpackBtn.BackgroundTransparency = 0.2
-toggleBackpackBtn.Image = "rbxassetid://73146839145612"
-toggleBackpackBtn.Active = true
-toggleBackpackBtn.Draggable = true
-toggleBackpackBtn.Parent = screenGui
+-- BOTÃO DE ABRIR / FECHAR MOCHILA
+local toggleBtn = Instance.new("ImageButton")
+toggleBtn.Name = "ToggleBackpackBtn"
+toggleBtn.Size = UDim2.new(0, 42, 0, 42)
+toggleBtn.Position = UDim2.new(0.5, -21, 0.02, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+toggleBtn.BackgroundTransparency = 0.2
+toggleBtn.Image = "rbxassetid://73146839145612"
+toggleBtn.Active = true
+toggleBtn.Draggable = true
+toggleBtn.Parent = screenGui
 
-local btnStroke = Instance.new("UIStroke")
-btnStroke.Color = Color3.fromRGB(255, 255, 255)
-btnStroke.Thickness = 1.5
-btnStroke.Parent = toggleBackpackBtn
+local toggleStroke = Instance.new("UIStroke")
+toggleStroke.Color = Color3.fromRGB(255, 255, 255)
+toggleStroke.Thickness = 1.5
+toggleStroke.Parent = toggleBtn
 
--- 2. PAINEL PRINCIPAL DO INVENTÁRIO
+-- PAINEL DA MOCHILA (INVENTÁRIO)
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
 mainPanel.Size = UDim2.new(0, 230, 0, 230)
-mainPanel.Position = UDim2.new(0.5, -115, 0.30, 0)
+mainPanel.Position = UDim2.new(0.5, -115, 0.28, 0)
 mainPanel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 mainPanel.BorderSizePixel = 0
 mainPanel.Visible = false
@@ -55,29 +57,27 @@ mainPanel.Parent = screenGui
 
 Adapter.MainPanel = mainPanel
 
-local panelStroke = Instance.new("UIStroke")
-panelStroke.Color = Color3.fromRGB(255, 255, 255)
-panelStroke.Thickness = 2
-panelStroke.Parent = mainPanel
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(255, 255, 255)
+mainStroke.Thickness = 2
+mainStroke.Parent = mainPanel
 
-local headerFrame = Instance.new("Frame")
-headerFrame.Name = "HeaderFrame"
-headerFrame.Size = UDim2.new(1, -6, 0, 30)
-headerFrame.Position = UDim2.new(0, 3, 0, 3)
-headerFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-headerFrame.BorderSizePixel = 0
-headerFrame.Parent = mainPanel
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, -6, 0, 30)
+header.Position = UDim2.new(0, 3, 0, 3)
+header.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+header.BorderSizePixel = 0
+header.Parent = mainPanel
 
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, 0, 1, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "Project Backpack"
-titleLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-titleLabel.Font = Enum.Font.SpecialElite
-titleLabel.TextSize = 16
-titleLabel.Parent = headerFrame
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 1, 0)
+title.BackgroundTransparency = 1
+title.Text = "Project Backpack"
+title.TextColor3 = Color3.fromRGB(0, 0, 0)
+title.Font = Enum.Font.SpecialElite
+title.TextSize = 16
+title.Parent = header
 
--- CONTAINER DAS TOOLS (ALINHAMENTO TOP-LEFT CORRIGIDO)
 local scrollFrame = Instance.new("ScrollingFrame")
 scrollFrame.Name = "ToolsScroll"
 scrollFrame.Size = UDim2.new(1, -10, 1, -42)
@@ -88,30 +88,30 @@ scrollFrame.ScrollBarThickness = 3
 scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
 scrollFrame.Parent = mainPanel
 
-local gridLayout = Instance.new("UIGridLayout")
-gridLayout.CellSize = UDim2.new(0, 65, 0, 65)
-gridLayout.CellPadding = UDim2.new(0, 6, 0, 6)
-gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left -- CORREÇÃO: Alinhado à esquerda
-gridLayout.VerticalAlignment = Enum.VerticalAlignment.Top     -- CORREÇÃO: Alinhado ao topo
-gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-gridLayout.Parent = scrollFrame
+local grid = Instance.new("UIGridLayout")
+grid.CellSize = UDim2.new(0, 65, 0, 65)
+grid.CellPadding = UDim2.new(0, 6, 0, 6)
+grid.HorizontalAlignment = Enum.HorizontalAlignment.Left
+grid.VerticalAlignment = Enum.VerticalAlignment.Top
+grid.SortOrder = Enum.SortOrder.LayoutOrder
+grid.Parent = scrollFrame
 
--- 3. HOTBAR FIXADA LOGO ABAIXO DO PAINEL (COMO NA IMAGEM 2)
-local hotbarFrame = Instance.new("Frame")
-hotbarFrame.Name = "HotbarFrame"
-hotbarFrame.Size = UDim2.new(1, 0, 0, 68)
-hotbarFrame.Position = UDim2.new(0, 0, 1, 8) -- Colado logo abaixo da mochila
-hotbarFrame.BackgroundTransparency = 1
-hotbarFrame.Parent = mainPanel -- Parented no mainPanel para se mover junto se arrastado
+-- CONTAINER DA HOTBAR (FIXO NA PARTE INFERIOR DA TELA)
+local hotbarContainer = Instance.new("Frame")
+hotbarContainer.Name = "HotbarContainer"
+hotbarContainer.Size = UDim2.new(0, 210, 0, 68)
+hotbarContainer.Position = UDim2.new(0.5, -105, 0.82, 0)
+hotbarContainer.BackgroundTransparency = 1
+hotbarContainer.Parent = screenGui
 
 local hotbarLayout = Instance.new("UIListLayout")
 hotbarLayout.FillDirection = Enum.FillDirection.Horizontal
 hotbarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 hotbarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 hotbarLayout.Padding = UDim.new(0, 6)
-hotbarLayout.Parent = hotbarFrame
+hotbarLayout.Parent = hotbarContainer
 
--- CRIAR OS 3 SLOTS BASE NA HOTBAR
+-- SLOTS DE HOTBAR
 local hotbarSlotFrames = {}
 for i = 1, 3 do
     local slotFrame = Instance.new("Frame")
@@ -119,7 +119,7 @@ for i = 1, 3 do
     slotFrame.Size = UDim2.new(0, 65, 0, 65)
     slotFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     slotFrame.BackgroundTransparency = 0.5
-    slotFrame.Parent = hotbarFrame
+    slotFrame.Parent = hotbarContainer
 
     local sStroke = Instance.new("UIStroke")
     sStroke.Color = Color3.fromRGB(255, 255, 255)
@@ -133,9 +133,9 @@ for i = 1, 3 do
     hotbarSlotFrames[i] = slotFrame
 end
 
--- SISTEMA DE RE-RENDERIZAÇÃO E ATUALIZAÇÃO
+-- ATUALIZADOR DE RE-RENDERIZAÇÃO DA UI
 function Adapter:RefreshUI()
-    -- Renderiza itens nos slots da Hotbar
+    -- Renderiza itens nos 3 slots da Hotbar
     for i = 1, 3 do
         local slotContainer = hotbarSlotFrames[i]
         for _, child in pairs(slotContainer:GetChildren()) do
@@ -152,7 +152,7 @@ function Adapter:RefreshUI()
         end
     end
 
-    -- Renderiza itens dentro do Inventário que não estão na Hotbar
+    -- Renderiza itens no Inventário (Mochila) que não estão equipados na Hotbar
     for _, child in pairs(scrollFrame:GetChildren()) do
         if child:IsA("GuiObject") and not child:IsA("UIGridLayout") then
             child.Parent = nil
@@ -176,73 +176,102 @@ function Adapter:RefreshUI()
     end
 end
 
--- SISTEMA DE ARRASTAR E SOLTAR (DRAG & DROP + TROCA DE SLOTS)
+-- SISTEMA DE DRAG & DROP COM PREVIEW EM TEMPO REAL
 local function SetupDragAndDrop(toolData)
     local btn = toolData.ButtonUI
     if not btn then return end
 
-    local dragging = false
-    local dragStartPos = nil
-    local originalParent = nil
+    local isDragging = false
+    local dragProxy = nil
+    local dragConn = nil
 
     btn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStartPos = input.Position
-            originalParent = btn.Parent
+            isDragging = true
+
+            -- Criar um clone do botão para arrastar livremente na tela
+            dragProxy = btn:Clone()
+            dragProxy.Size = UDim2.new(0, 65, 0, 65)
+            dragProxy.AnchorPoint = Vector2.new(0.5, 0.5)
+            dragProxy.ZIndex = 100
+            dragProxy.BackgroundTransparency = 0.2
+            dragProxy.Parent = screenGui
+
+            local mousePos = UserInputService:GetMouseLocation()
+            dragProxy.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y - 36)
+
+            dragConn = RunService.RenderStepped:Connect(function()
+                if isDragging and dragProxy then
+                    local mPos = UserInputService:GetMouseLocation()
+                    dragProxy.Position = UDim2.new(0, mPos.X, 0, mPos.Y - 36)
+                end
+            end)
         end
     end)
 
-    btn.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if not dragging then return end
-            dragging = false
+    local function FinalizarArrasto()
+        if not isDragging then return end
+        isDragging = false
 
-            local mousePos = UserInputService:GetMouseLocation()
+        if dragConn then dragConn:Disconnect() dragConn = nil end
+        if dragProxy then dragProxy:Destroy() dragProxy = nil end
 
-            -- Identifica em qual slot da Hotbar o mouse foi solto
-            local targetSlotIndex = nil
-            for i = 1, 3 do
-                local slotFrame = hotbarSlotFrames[i]
-                local pos = slotFrame.AbsolutePosition
-                local size = slotFrame.AbsoluteSize
+        local mousePos = UserInputService:GetMouseLocation()
 
-                if mousePos.X >= pos.X and mousePos.X <= pos.X + size.X and
-                   mousePos.Y >= pos.Y and mousePos.Y <= pos.Y + size.Y then
-                    targetSlotIndex = i
-                    break
-                end
+        -- Checar se soltou sobre um dos slots da Hotbar
+        local targetSlotIndex = nil
+        for i = 1, 3 do
+            local slotFrame = hotbarSlotFrames[i]
+            local pos = slotFrame.AbsolutePosition
+            local size = slotFrame.AbsoluteSize
+
+            if mousePos.X >= pos.X and mousePos.X <= pos.X + size.X and
+               mousePos.Y >= pos.Y and mousePos.Y <= pos.Y + size.Y then
+                targetSlotIndex = i
+                break
             end
+        end
 
-            -- Onde o Tool estava anteriormente?
-            local currentSlotIndex = nil
-            for i = 1, 3 do
-                if Adapter.HotbarSlots[i] and Adapter.HotbarSlots[i].Id == toolData.Id then
-                    currentSlotIndex = i
-                    break
-                end
+        -- Identifica de onde o item veio
+        local currentSlotIndex = nil
+        for i = 1, 3 do
+            if Adapter.HotbarSlots[i] and Adapter.HotbarSlots[i].Id == toolData.Id then
+                currentSlotIndex = i
+                break
             end
+        end
 
-            if targetSlotIndex then
-                -- Soltou em um slot da Hotbar
-                if currentSlotIndex then
-                    -- TROCA DE POSIÇÃO (SWAP) entre slots da Hotbar
-                    local existingTool = Adapter.HotbarSlots[targetSlotIndex]
-                    Adapter.HotbarSlots[targetSlotIndex] = toolData
-                    Adapter.HotbarSlots[currentSlotIndex] = existingTool
-                else
-                    -- Arrastou da mochila para a Hotbar (substitui ou troca se já tiver algo)
-                    local existingTool = Adapter.HotbarSlots[targetSlotIndex]
-                    Adapter.HotbarSlots[targetSlotIndex] = toolData
-                end
+        if targetSlotIndex then
+            if currentSlotIndex then
+                -- Troca de posições (SWAP) entre slots da Hotbar
+                local itemNoAlvo = Adapter.HotbarSlots[targetSlotIndex]
+                Adapter.HotbarSlots[targetSlotIndex] = toolData
+                Adapter.HotbarSlots[currentSlotIndex] = itemNoAlvo
             else
-                -- Soltou fora da Hotbar: Se estava na Hotbar, devolve para a mochila
+                -- Insere da Mochila na Hotbar (trocando com o que já estiver lá)
+                Adapter.HotbarSlots[targetSlotIndex] = toolData
+            end
+        else
+            -- Checar se foi solto no painel da Mochila
+            local mainPos = mainPanel.AbsolutePosition
+            local mainSize = mainPanel.AbsoluteSize
+            local dentroDaMochila = (mousePos.X >= mainPos.X and mousePos.X <= mainPos.X + mainSize.X and
+                                    mousePos.Y >= mainPos.Y and mousePos.Y <= mainPos.Y + mainSize.Y)
+
+            if dentroDaMochila or not mainPanel.Visible then
+                -- Se foi solto na mochila ou fora da hotbar, desequipa o slot
                 if currentSlotIndex then
                     Adapter.HotbarSlots[currentSlotIndex] = nil
                 end
             end
+        end
 
-            Adapter:RefreshUI()
+        Adapter:RefreshUI()
+    end
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            FinalizarArrasto()
         end
     end)
 end
@@ -253,7 +282,7 @@ function Adapter:RegisterTool(toolData)
     Adapter:RefreshUI()
 end
 
-toggleBackpackBtn.MouseButton1Click:Connect(function()
+toggleBtn.MouseButton1Click:Connect(function()
     mainPanel.Visible = not mainPanel.Visible
 end)
 
