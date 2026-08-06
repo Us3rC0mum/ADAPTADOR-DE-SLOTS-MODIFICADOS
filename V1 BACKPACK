@@ -1,5 +1,5 @@
 -- ============================================
--- PROJECT BACKPACK - ADAPTADOR DE UI & INVENTÁRIO
+-- PROJECT BACKPACK - ADAPTADOR (PRESERVA DESIGN ORIGINAL)
 -- ============================================
 _G.ScriptAdapter = _G.ScriptAdapter or {}
 _G.ScriptAdapter.Queue = _G.ScriptAdapter.Queue or {}
@@ -23,9 +23,7 @@ screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then screenGui.Parent = playerGui end
 
--- ============================================
--- 1. BOTÃO MOCHILA (ARRASTÁVEL)
--- ============================================
+-- 1. BOTÃO MOCHILA (ARRASTÁVEL & REDUZIDO)
 local toggleBackpackBtn = Instance.new("ImageButton")
 toggleBackpackBtn.Name = "ToggleBackpackBtn"
 toggleBackpackBtn.Size = UDim2.new(0, 40, 0, 40)
@@ -42,9 +40,7 @@ btnStroke.Color = Color3.fromRGB(255, 255, 255)
 btnStroke.Thickness = 1.5
 btnStroke.Parent = toggleBackpackBtn
 
--- ============================================
--- 2. PAINEL INVENTÁRIO
--- ============================================
+-- 2. PAINEL INVENTÁRIO (PROJECT BACKPACK)
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
 mainPanel.Size = UDim2.new(0, 230, 0, 220)
@@ -61,7 +57,6 @@ panelStroke.Color = Color3.fromRGB(255, 255, 255)
 panelStroke.Thickness = 2
 panelStroke.Parent = mainPanel
 
--- Cabeçalho
 local headerFrame = Instance.new("Frame")
 headerFrame.Name = "HeaderFrame"
 headerFrame.Size = UDim2.new(1, -6, 0, 30)
@@ -79,7 +74,6 @@ titleLabel.Font = Enum.Font.SpecialElite
 titleLabel.TextSize = 16
 titleLabel.Parent = headerFrame
 
--- Scroll Frame para Tools
 local scrollFrame = Instance.new("ScrollingFrame")
 scrollFrame.Name = "ToolsScroll"
 scrollFrame.Size = UDim2.new(1, -10, 1, -42)
@@ -97,9 +91,7 @@ gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 gridLayout.Parent = scrollFrame
 
--- ============================================
--- 3. HOTBAR INFERIOR (DINÂMICA)
--- ============================================
+-- 3. HOTBAR INFERIOR (DINÂMICA: 1, 2 OU 3 SLOTS)
 local hotbarFrame = Instance.new("Frame")
 hotbarFrame.Name = "HotbarFrame"
 hotbarFrame.Size = UDim2.new(0, 0, 0, 68)
@@ -114,115 +106,58 @@ hotbarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 hotbarLayout.Padding = UDim.new(0, 6)
 hotbarLayout.Parent = hotbarFrame
 
--- ============================================
--- GERENCIADOR DE CAPTURA E RENDERING DINÂMICO
--- ============================================
-local activeEquippedId = nil
-
+-- GERENCIADOR DE RE-PARENTING SEM ALTERAR DESIGN
 local function RefreshUI()
-    -- Limpa os elementos visuais atuais
+    -- Limpa containers sem destruir as UIs originais das Tools
     for _, item in pairs(hotbarFrame:GetChildren()) do
-        if item:IsA("TextButton") then item:Destroy() end
+        if item:IsA("Frame") or item:IsA("GuiObject") then item.Parent = nil end
     end
     for _, item in pairs(scrollFrame:GetChildren()) do
-        if item:IsA("TextButton") then item:Destroy() end
+        if item:IsA("GuiObject") and not item:IsA("UIGridLayout") then item.Parent = nil end
     end
 
-    -- Renderiza APENAS os slots que possuem Tools filhas registradas (máximo 3)
+    -- Renderiza APENAS os slots ativos na Hotbar
     local slotCount = #Adapter.HotbarSlots
-    
     if slotCount > 0 then
-        -- Recalcula o tamanho e posição do container para centralizar perfeitamente
         local totalWidth = (slotCount * 65) + ((slotCount - 1) * 6)
         hotbarFrame.Size = UDim2.new(0, totalWidth, 0, 68)
         hotbarFrame.Position = UDim2.new(0.5, -math.floor(totalWidth / 2), 1, -78)
 
-        for i = 1, slotCount do
+        for i = 1, math.min(slotCount, 3) do
             local toolData = Adapter.HotbarSlots[i]
-            if toolData then
-                local slotBtn = Instance.new("TextButton")
-                slotBtn.Size = UDim2.new(0, 65, 0, 65)
-                slotBtn.BackgroundColor3 = (activeEquippedId == toolData.Id) and Color3.fromRGB(50, 50, 50) or Color3.fromRGB(0, 0, 0)
-                slotBtn.Text = toolData.Title or ""
-                slotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                slotBtn.Font = Enum.Font.SpecialElite
-                slotBtn.TextSize = 10
-                slotBtn.TextWrapped = true
-                slotBtn.LayoutOrder = i
-                slotBtn.Parent = hotbarFrame
-
-                local stroke = Instance.new("UIStroke")
-                stroke.Color = Color3.fromRGB(255, 255, 255)
-                stroke.Thickness = 2
-                stroke.Parent = slotBtn
-
-                slotBtn.MouseButton1Click:Connect(function()
-                    if activeEquippedId == toolData.Id then
-                        activeEquippedId = nil
-                        if toolData.OnUnequip then toolData.OnUnequip() end
-                    else
-                        if activeEquippedId and Adapter.RegisteredTools[activeEquippedId] then
-                            local prev = Adapter.RegisteredTools[activeEquippedId]
-                            if prev.OnUnequip then prev.OnUnequip() end
-                        end
-                        activeEquippedId = toolData.Id
-                        if toolData.OnEquip then toolData.OnEquip() end
-                    end
-                    RefreshUI()
-                end)
+            if toolData and toolData.ButtonUI then
+                local btn = toolData.ButtonUI
+                btn.Size = UDim2.new(0, 65, 0, 65)
+                btn.Position = UDim2.new(0, 0, 0, 0)
+                btn.Parent = hotbarFrame
             end
         end
     else
         hotbarFrame.Size = UDim2.new(0, 0, 0, 68)
     end
 
-    -- Renderiza itens no painel da Mochila
+    -- Renderiza no grid do Project Backpack o que não estiver na Hotbar (ou todos para troca)
     for id, toolData in pairs(Adapter.RegisteredTools) do
-        local toolCard = Instance.new("TextButton")
-        toolCard.Size = UDim2.new(0, 65, 0, 65)
-        toolCard.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        toolCard.Text = toolData.Title or ""
-        toolCard.TextColor3 = Color3.fromRGB(255, 255, 255)
-        toolCard.Font = Enum.Font.SpecialElite
-        toolCard.TextSize = 10
-        toolCard.TextWrapped = true
-        toolCard.Parent = scrollFrame
-
-        local cardStroke = Instance.new("UIStroke")
-        cardStroke.Color = Color3.fromRGB(255, 255, 255)
-        cardStroke.Thickness = 1.5
-        cardStroke.Parent = toolCard
-
-        toolCard.MouseButton1Click:Connect(function()
-            if mainPanel.Visible then
-                local alreadyInHotbar = false
-                for i = 1, #Adapter.HotbarSlots do
-                    if Adapter.HotbarSlots[i] and Adapter.HotbarSlots[i].Id == id then
-                        alreadyInHotbar = true
-                        break
-                    end
-                end
-
-                if not alreadyInHotbar then
-                    if #Adapter.HotbarSlots < 3 then
-                        table.insert(Adapter.HotbarSlots, toolData)
-                    else
-                        Adapter.HotbarSlots[3] = toolData
-                    end
-                    RefreshUI()
-                end
+        local alreadyInHotbar = false
+        for _, hTool in ipairs(Adapter.HotbarSlots) do
+            if hTool.Id == id then
+                alreadyInHotbar = true
+                break
             end
-        end)
+        end
+
+        if not alreadyInHotbar and toolData.ButtonUI then
+            local btn = toolData.ButtonUI
+            btn.Size = UDim2.new(0, 65, 0, 65)
+            btn.Position = UDim2.new(0, 0, 0, 0)
+            btn.Parent = scrollFrame
+        end
     end
 end
 
 function Adapter:RegisterTool(toolData)
     Adapter.RegisteredTools[toolData.Id] = toolData
-    
-    -- Adiciona na Hotbar apenas se houver menos de 3 slots preenchidos
-    if #Adapter.HotbarSlots < 3 then
-        table.insert(Adapter.HotbarSlots, toolData)
-    end
+    -- Não coloca direto na Hotbar; fica apenas disponível na Mochila
     RefreshUI()
 end
 
@@ -236,4 +171,3 @@ end
 Adapter.Queue = {}
 
 RefreshUI()
-print("[Project Backpack] Adaptador pronto!")
