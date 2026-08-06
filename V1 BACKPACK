@@ -1,5 +1,5 @@
 -- ============================================
--- PROJECT BACKPACK - ADAPTADOR COMPLETO (CLEAN)
+-- PROJECT BACKPACK - ADAPTADOR COMPLETO (DESIGN REFINADO - ARCADE)
 -- ============================================
 _G.ScriptAdapter = _G.ScriptAdapter or {}
 _G.ScriptAdapter.Queue = _G.ScriptAdapter.Queue or {}
@@ -29,11 +29,11 @@ screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then screenGui.Parent = playerGui end
 
--- BOTÃO DE ABRIR / FECHAR MOCHILA
+-- --- BOTÃO DE ABRIR / FECHAR MOCHILA (SEM BORDA BRANCA) ---
 local toggleBtn = Instance.new("ImageButton")
 toggleBtn.Name = "ToggleBackpackBtn"
-toggleBtn.Size = UDim2.new(0, 42, 0, 42)
-toggleBtn.Position = UDim2.new(0.5, -21, 0.02, 0)
+toggleBtn.Size = UDim2.new(0, 44, 0, 44)
+toggleBtn.Position = UDim2.new(0.5, -22, 0.02, 0)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 toggleBtn.BackgroundTransparency = 0.2
 toggleBtn.Image = "rbxassetid://73146839145612"
@@ -41,16 +41,15 @@ toggleBtn.Active = true
 toggleBtn.Draggable = true
 toggleBtn.Parent = screenGui
 
-local toggleStroke = Instance.new("UIStroke")
-toggleStroke.Color = Color3.fromRGB(255, 255, 255)
-toggleStroke.Thickness = 1.5
-toggleStroke.Parent = toggleBtn
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 4)
+toggleCorner.Parent = toggleBtn
 
--- PAINEL DA MOCHILA (INVENTÁRIO)
+-- --- PAINEL PRINCIPAL DA MOCHILA (INVENTÁRIO) ---
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
-mainPanel.Size = UDim2.new(0, 230, 0, 230)
-mainPanel.Position = UDim2.new(0.5, -115, 0.28, 0)
+mainPanel.Size = UDim2.new(0, 248, 0, 258)
+mainPanel.Position = UDim2.new(0.5, -124, 0.25, 0)
 mainPanel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 mainPanel.BorderSizePixel = 0
 mainPanel.Visible = false
@@ -62,47 +61,62 @@ Adapter.MainPanel = mainPanel
 
 local mainStroke = Instance.new("UIStroke")
 mainStroke.Color = Color3.fromRGB(255, 255, 255)
-mainStroke.Thickness = 2
+mainStroke.Thickness = 2.5
 mainStroke.Parent = mainPanel
 
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 4)
+mainCorner.Parent = mainPanel
+
+-- HEADER (CABEÇALHO)
 local header = Instance.new("Frame")
-header.Size = UDim2.new(1, -6, 0, 30)
-header.Position = UDim2.new(0, 3, 0, 3)
+header.Size = UDim2.new(1, -12, 0, 32)
+header.Position = UDim2.new(0, 6, 0, 6)
 header.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 header.BorderSizePixel = 0
 header.Parent = mainPanel
+
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, 3)
+headerCorner.Parent = header
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 1, 0)
 title.BackgroundTransparency = 1
 title.Text = "Project Backpack"
 title.TextColor3 = Color3.fromRGB(0, 0, 0)
-title.Font = Enum.Font.SpecialElite
-title.TextSize = 16
+title.Font = Enum.Font.Arcade
+title.TextSize = 18
 title.Parent = header
 
+-- ÁREA SCROLLABLE DOS TOOLS
 local scrollFrame = Instance.new("ScrollingFrame")
 scrollFrame.Name = "ToolsScroll"
-scrollFrame.Size = UDim2.new(1, -10, 1, -42)
-scrollFrame.Position = UDim2.new(0, 5, 0, 37)
+scrollFrame.Size = UDim2.new(1, -12, 1, -50)
+scrollFrame.Position = UDim2.new(0, 6, 0, 44)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel = 0
-scrollFrame.ScrollBarThickness = 3
+scrollFrame.ScrollBarThickness = 4
 scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
 scrollFrame.Parent = mainPanel
 
+local scrollPadding = Instance.new("UIPadding")
+scrollPadding.PaddingLeft = UDim.new(0, 4)
+scrollPadding.PaddingTop = UDim.new(0, 4)
+scrollPadding.Parent = scrollFrame
+
 local grid = Instance.new("UIGridLayout")
-grid.CellSize = UDim2.new(0, 65, 0, 65)
-grid.CellPadding = UDim2.new(0, 6, 0, 6)
+grid.CellSize = UDim2.new(0, 68, 0, 68)
+grid.CellPadding = UDim2.new(0, 8, 0, 8)
 grid.HorizontalAlignment = Enum.HorizontalAlignment.Left
 grid.VerticalAlignment = Enum.VerticalAlignment.Top
 grid.SortOrder = Enum.SortOrder.LayoutOrder
 grid.Parent = scrollFrame
 
--- CONTAINER DA HOTBAR (CENTRALIZAÇÃO E DIMENSIONAMENTO DINÂMICO)
+-- --- CONTAINER DA HOTBAR (SLOTS INFERIORES) ---
 local hotbarContainer = Instance.new("Frame")
 hotbarContainer.Name = "HotbarContainer"
-hotbarContainer.Size = UDim2.new(0, 0, 0, 68)
+hotbarContainer.Size = UDim2.new(0, 0, 0, 72)
 hotbarContainer.Position = UDim2.new(0.5, 0, 0.78, 0)
 hotbarContainer.AnchorPoint = Vector2.new(0.5, 0)
 hotbarContainer.BackgroundTransparency = 1
@@ -113,35 +127,34 @@ local hotbarLayout = Instance.new("UIListLayout")
 hotbarLayout.FillDirection = Enum.FillDirection.Horizontal
 hotbarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 hotbarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-hotbarLayout.Padding = UDim.new(0, 6)
+hotbarLayout.Padding = UDim.new(0, 10)
 hotbarLayout.Parent = hotbarContainer
 
--- CRIANDO OS SLOTS DA HOTBAR (ATÉ MÁXIMO DE 3)
+-- CRIANDO OS SLOTS DA HOTBAR
 local hotbarSlotFrames = {}
 for i = 1, MAX_SLOTS do
     local slotFrame = Instance.new("Frame")
     slotFrame.Name = "Slot_" .. i
-    slotFrame.Size = UDim2.new(0, 65, 0, 65)
+    slotFrame.Size = UDim2.new(0, 68, 0, 68)
     slotFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    slotFrame.BackgroundTransparency = 0.5
+    slotFrame.BackgroundTransparency = 0.3
     slotFrame.Visible = false
     slotFrame.Parent = hotbarContainer
 
     local sStroke = Instance.new("UIStroke")
     sStroke.Color = Color3.fromRGB(255, 255, 255)
-    sStroke.Thickness = 1.5
+    sStroke.Thickness = 2
     sStroke.Parent = slotFrame
 
     local sCorner = Instance.new("UICorner")
-    sCorner.CornerRadius = UDim.new(0, 2)
+    sCorner.CornerRadius = UDim.new(0, 4)
     sCorner.Parent = slotFrame
 
     hotbarSlotFrames[i] = slotFrame
 end
 
--- ATUALIZADOR E RE-RENDERIZADOR DA UI
+-- --- ATUALIZADOR E RE-RENDERIZADOR DA UI ---
 function Adapter:RefreshUI()
-    -- Calcula quantos slots estão atualmente ocupados
     local lastOccupied = 0
     for i = 1, MAX_SLOTS do
         if Adapter.HotbarSlots[i] ~= nil then
@@ -149,7 +162,6 @@ function Adapter:RefreshUI()
         end
     end
 
-    -- Se estiver arrastando, libera visualmente o próximo slot vazio (máximo 3)
     local visibleLimit = lastOccupied
     if Adapter.IsDragging then
         visibleLimit = math.min(MAX_SLOTS, math.max(1, lastOccupied + 1))
@@ -157,8 +169,7 @@ function Adapter:RefreshUI()
 
     for i = 1, MAX_SLOTS do
         local slotContainer = hotbarSlotFrames[i]
-        
-        -- Limpa elementos que não pertencem ao layout
+
         for _, child in pairs(slotContainer:GetChildren()) do
             if child:IsA("GuiObject") and not child:IsA("UIStroke") and not child:IsA("UICorner") then
                 child.Parent = nil
@@ -169,17 +180,16 @@ function Adapter:RefreshUI()
         if toolData and toolData.ButtonUI then
             toolData.ButtonUI.Size = UDim2.new(1, 0, 1, 0)
             toolData.ButtonUI.Position = UDim2.new(0, 0, 0, 0)
+            toolData.ButtonUI.Font = Enum.Font.Arcade
             toolData.ButtonUI.Parent = slotContainer
             slotContainer.Visible = true
         else
-            -- Mantém o slot visível apenas se estiver dentro do limite calculado
             slotContainer.Visible = (i <= visibleLimit)
         end
     end
 
-    -- Atualiza o inventário da mochila
     for _, child in pairs(scrollFrame:GetChildren()) do
-        if child:IsA("GuiObject") and not child:IsA("UIGridLayout") then
+        if child:IsA("GuiObject") and not child:IsA("UIGridLayout") and not child:IsA("UIPadding") then
             child.Parent = nil
         end
     end
@@ -194,17 +204,20 @@ function Adapter:RefreshUI()
         end
 
         if not inHotbar and toolData.ButtonUI then
-            toolData.ButtonUI.Size = UDim2.new(0, 65, 0, 65)
+            toolData.ButtonUI.Size = UDim2.new(0, 68, 0, 68)
             toolData.ButtonUI.Position = UDim2.new(0, 0, 0, 0)
+            toolData.ButtonUI.Font = Enum.Font.Arcade
             toolData.ButtonUI.Parent = scrollFrame
         end
     end
 end
 
--- LÓGICA DE ARRASTO (DRAG & DROP)
+-- --- LÓGICA DE ARRASTO (DRAG & DROP) ---
 local function SetupDragAndDrop(toolData)
     local btn = toolData.ButtonUI
     if not btn then return end
+
+    btn.Font = Enum.Font.Arcade
 
     local isDragging = false
     local dragProxy = nil
@@ -225,7 +238,8 @@ local function SetupDragAndDrop(toolData)
                     Adapter:RefreshUI()
 
                     dragProxy = btn:Clone()
-                    dragProxy.Size = UDim2.new(0, 65, 0, 65)
+                    dragProxy.Size = UDim2.new(0, 68, 0, 68)
+                    dragProxy.Font = Enum.Font.Arcade
                     dragProxy.AnchorPoint = Vector2.new(0.5, 0.5)
                     dragProxy.ZIndex = 100
                     dragProxy.BackgroundTransparency = 0.2
@@ -319,11 +333,39 @@ function Adapter:RegisterTool(toolData)
     Adapter:RefreshUI()
 end
 
+-- --- DESTRUIÇÃO COMPLETA DO ADAPTADOR E FERRAMENTAS ---
+local function DestruirAdaptador()
+    for _, toolData in pairs(Adapter.RegisteredTools) do
+        if toolData.OnUnequip then
+            pcall(function() toolData.OnUnequip() end)
+        end
+        if toolData.ButtonUI then
+            pcall(function() toolData.ButtonUI:Destroy() end)
+        end
+    end
+
+    Adapter.RegisteredTools = {}
+    Adapter.HotbarSlots = {nil, nil, nil}
+    _G.ScriptAdapter = nil
+
+    screenGui:Destroy()
+end
+
+-- --- LÓGICA DE CLIQUE ÚNICO E DUPLO CLIQUE RÁPIDO ---
+local ultimoClique = 0
+local INTERVALO_DUPLO_CLIQUE = 0.35 -- segundos para detectar duplo clique
+
 toggleBtn.MouseButton1Click:Connect(function()
-    mainPanel.Visible = not mainPanel.Visible
+    local agora = tick()
+    if (agora - ultimoClique) <= INTERVALO_DUPLO_CLIQUE then
+        DestruirAdaptador()
+    else
+        mainPanel.Visible = not mainPanel.Visible
+    end
+    ultimoClique = agora
 end)
 
--- Processa ferramentas que foram enviadas para a fila antes do adaptador iniciar
+-- Processa ferramentas enviadas para a fila antes da inicialização
 for _, pendingTool in ipairs(Adapter.Queue) do
     Adapter:RegisterTool(pendingTool)
 end
