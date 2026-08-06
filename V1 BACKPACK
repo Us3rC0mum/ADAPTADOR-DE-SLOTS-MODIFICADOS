@@ -4,6 +4,7 @@
 _G.ScriptAdapter = _G.ScriptAdapter or {}
 _G.ScriptAdapter.Queue = _G.ScriptAdapter.Queue or {}
 _G.ScriptAdapter.RegisteredTools = _G.ScriptAdapter.RegisteredTools or {}
+_G.ScriptAdapter.IsDragging = false
 
 local MAX_SLOTS = 1
 _G.ScriptAdapter.HotbarSlots = _G.ScriptAdapter.HotbarSlots or {nil}
@@ -98,7 +99,7 @@ grid.VerticalAlignment = Enum.VerticalAlignment.Top
 grid.SortOrder = Enum.SortOrder.LayoutOrder
 grid.Parent = scrollFrame
 
--- CONTAINER DA HOTBAR (POSICIONADO MAIS ALTO)
+-- CONTAINER DA HOTBAR
 local containerWidth = MAX_SLOTS * 65 + (MAX_SLOTS - 1) * 6
 local hotbarContainer = Instance.new("Frame")
 hotbarContainer.Name = "HotbarContainer"
@@ -122,6 +123,7 @@ for i = 1, MAX_SLOTS do
     slotFrame.Size = UDim2.new(0, 65, 0, 65)
     slotFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     slotFrame.BackgroundTransparency = 0.5
+    slotFrame.Visible = false -- Oculto por padrão
     slotFrame.Parent = hotbarContainer
 
     local sStroke = Instance.new("UIStroke")
@@ -151,6 +153,10 @@ function Adapter:RefreshUI()
             toolData.ButtonUI.Size = UDim2.new(1, 0, 1, 0)
             toolData.ButtonUI.Position = UDim2.new(0, 0, 0, 0)
             toolData.ButtonUI.Parent = slotContainer
+            slotContainer.Visible = true
+        else
+            -- Exibe o slot vazio APENAS se estiver arrastando algum item
+            slotContainer.Visible = Adapter.IsDragging
         end
     end
 
@@ -177,7 +183,7 @@ function Adapter:RefreshUI()
     end
 end
 
--- SISTEMA DE DRAG & DROP COM THRESHOLD DE MOVIMENTO
+-- SISTEMA DE DRAG & DROP COM EXIBIÇÃO DINÂMICA
 local function SetupDragAndDrop(toolData)
     local btn = toolData.ButtonUI
     if not btn then return end
@@ -195,9 +201,11 @@ local function SetupDragAndDrop(toolData)
             dragConn = RunService.RenderStepped:Connect(function()
                 local mPos = UserInputService:GetMouseLocation()
                 
-                -- Ativa o arrasto apenas se mover além do limite (evita conflito com cliques)
                 if not isDragging and startPos and (mPos - startPos).Magnitude > dragThreshold then
                     isDragging = true
+                    Adapter.IsDragging = true
+                    Adapter:RefreshUI() -- Faz o slot vazio surgir no momento que inicia o arrasto
+
                     dragProxy = btn:Clone()
                     dragProxy.Size = UDim2.new(0, 65, 0, 65)
                     dragProxy.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -221,6 +229,8 @@ local function SetupDragAndDrop(toolData)
 
         if isDragging then
             isDragging = false
+            Adapter.IsDragging = false
+
             if dragProxy then
                 dragProxy:Destroy()
                 dragProxy = nil
@@ -270,7 +280,7 @@ local function SetupDragAndDrop(toolData)
                 end
             end
 
-            Adapter:RefreshUI()
+            Adapter:RefreshUI() -- Se soltou fora, o slot vazio volta a esconder
         end
 
         startPos = nil
